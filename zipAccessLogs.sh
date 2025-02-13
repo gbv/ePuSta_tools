@@ -1,7 +1,5 @@
 #!/bin/bash
 
-EPUSTADIR=/mcr/clausthal/epusta
-
-ACCESSLOGDIR=$EPUSTADIR/accesslogs/
+source .config
 
 gzip $ACCESSLOGDIR/*.log

@@ -1,7 +1,7 @@
 #!/usr/bin/php
 <?php
 
-$prefix = "access-clausthal-";
+$prefix = $config["LOGFILEPREFIX"];
 
 for ( $i = 1; $i < count($argv) ; $i++) {
     $file = $argv[$i];

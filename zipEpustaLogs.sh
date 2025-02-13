@@ -1,7 +1,5 @@
 #!/bin/bash
 
-EPUSTADIR=/mcr/clausthal/epusta
-
-EPUSTALOGDIR=$EPUSTADIR/epustalogs/
+source .config
 
 gzip $EPUSTALOGDIR/*.log

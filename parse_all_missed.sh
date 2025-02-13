@@ -1,11 +1,8 @@
 #!/bin/bash
 
-EPUSTADIR=/mcr/clausthal/epusta
+source .config
 
-ACCESSLOGDIR=$EPUSTADIR/accesslogs/
-EPUSTALOGDIR=$EPUSTADIR/epustalogs/
-
-source /mcr/clausthal/.profile
+source ~/.profile
 
 for filename in $ACCESSLOGDIR/*; do
     if [ -f $filename ]; then
