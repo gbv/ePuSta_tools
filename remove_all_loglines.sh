@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source .config
+source config
 
 for filename in $ACCESSLOGDIR/*.log; do
     basename="$(basename $filename .log)";

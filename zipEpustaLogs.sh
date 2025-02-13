@@ -1,5 +1,5 @@
 #!/bin/bash
 
-source .config
+source config
 
 gzip $EPUSTALOGDIR/*.log
