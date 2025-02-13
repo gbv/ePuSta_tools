@@ -1,6 +1,8 @@
 #!/usr/bin/php
 <?php
 
+include (__DIR__."/config.php");
+
 $prefix = $config["LOGFILEPREFIX"];
 
 for ( $i = 1; $i < count($argv) ; $i++) {
