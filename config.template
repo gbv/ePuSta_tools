@@ -9,3 +9,6 @@ ACCESSLOGDIR=
 EPUSTALOGDIR=
 # Prefix of Logfiles
 LOGFILEPREFIX=
+# Pipeline for parsing logfiles (commands separated by |)
+# Default: log2epusta.php | addIdentifierMIR.php | filter.php
+PIPELINE=
