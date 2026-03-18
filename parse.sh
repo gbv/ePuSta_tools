@@ -11,8 +11,13 @@ Usage: parse.sh [OPTIONS] [FILE...]
 Parse access logfiles to ePuSta logfiles.
 
 Options:
-  -h, --help    Show this help message
-  -f, --force   Force parsing even if destination is up to date
+  -h, --help      Show this help message
+  -f, --force     Force parsing even if destination is up to date
+  -a, --append    Append mode: only process new lines from the access log.
+                  Reads the UUID from the last line of the destination ePuSta
+                  log, finds that UUID in the access log, and processes only
+                  the lines that follow it. Output is appended to the
+                  destination file.
 
 Arguments:
   FILE...       Access logfiles to parse (supports glob patterns)
@@ -44,6 +49,7 @@ count_lines() {
 
 # Parse options
 FORCE=0
+APPEND=0
 FILES=()
 
 while [[ $# -gt 0 ]]; do
@@ -54,6 +60,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         -f|--force)
             FORCE=1
+            shift
+            ;;
+        -a|--append)
+            APPEND=1
             shift
             ;;
         --)
@@ -126,6 +136,65 @@ for filename in "${FILES[@]}"; do
         existing_dest="$destpath"
     elif [ -f "$destpath_gz" ]; then
         existing_dest="$destpath_gz"
+    fi
+
+    # Append mode: only process lines after the last UUID in the destination
+    if [ "$APPEND" -eq 1 ] && [ -n "$existing_dest" ]; then
+        # Extract UUID from last line of destination
+        if [[ "$existing_dest" == *.gz ]]; then
+            last_line=$(zcat "$existing_dest" | tail -n 1)
+        else
+            last_line=$(tail -n 1 "$existing_dest")
+        fi
+        last_uuid=$(echo "$last_line" | cut -d' ' -f1)
+
+        if [ -z "$last_uuid" ]; then
+            echo "Warning: Could not extract UUID from last line of $existing_dest, skipping $filename."
+            continue
+        fi
+
+        # Decompress source if needed
+        was_compressed=0
+        if [[ "$filename" == *.gz ]]; then
+            was_compressed=1
+            gzip -d "$filename"
+        fi
+
+        # Find the line number of the UUID in the access log
+        uuid_line=$(grep -n "^${last_uuid} " "$filename_uncompressed" | tail -n 1 | cut -d: -f1)
+
+        if [ -z "$uuid_line" ]; then
+            echo "Warning: UUID $last_uuid not found in $filename, skipping."
+            if [ "$was_compressed" -eq 1 ]; then
+                gzip "$filename_uncompressed"
+            fi
+            continue
+        fi
+
+        start_line=$((uuid_line + 1))
+        total_lines=$(wc -l < "$filename_uncompressed")
+
+        if [ "$start_line" -gt "$total_lines" ]; then
+            echo "Skipping: $filename (no new lines after UUID $last_uuid)"
+            if [ "$was_compressed" -eq 1 ]; then
+                gzip "$filename_uncompressed"
+            fi
+            continue
+        fi
+
+        new_lines=$((total_lines - uuid_line))
+        echo "Appending: $filename ($new_lines new lines after UUID $last_uuid)"
+
+        # Run pipeline on new lines only, append to destination
+        eval "tail -n +${start_line} '$filename_uncompressed' | $PIPE" >> "$destpath"
+
+        # Recompress source if it was compressed
+        if [ "$was_compressed" -eq 1 ]; then
+            gzip "$filename_uncompressed"
+        fi
+
+        echo "  -> $destpath (appended)"
+        continue
     fi
 
     # Decide whether to parse
