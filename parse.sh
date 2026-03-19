@@ -11,8 +11,11 @@ Usage: parse.sh [OPTIONS] [FILE...]
 Parse access logfiles to ePuSta logfiles.
 
 Options:
-  -h, --help    Show this help message
-  -f, --force   Force parsing even if destination is up to date
+  -h, --help              Show this help message
+  -f, --force             Force parsing even if destination is up to date
+  --use-modified-time     Use file modification time instead of line count to
+                          decide whether to reparse. Reparses if the source
+                          file is newer than the destination file.
 
 Arguments:
   FILE...       Access logfiles to parse (supports glob patterns)
@@ -20,7 +23,8 @@ Arguments:
 
 Parse conditions (without --force):
   - Destination file does not exist
-  - Source file has more lines than destination file
+  - Default: source file has more lines than destination file
+  - With --use-modified-time: source file is newer than destination file
 
 Configuration:
   Set PIPELINE in config file to customize the processing pipeline.
@@ -44,6 +48,7 @@ count_lines() {
 
 # Parse options
 FORCE=0
+USE_MTIME=0
 FILES=()
 
 while [[ $# -gt 0 ]]; do
@@ -54,6 +59,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         -f|--force)
             FORCE=1
+            shift
+            ;;
+        --use-modified-time)
+            USE_MTIME=1
             shift
             ;;
         --)
@@ -130,14 +139,22 @@ for filename in "${FILES[@]}"; do
 
     # Decide whether to parse
     if [ -n "$existing_dest" ] && [ "$FORCE" -eq 0 ]; then
-        src_lines=$(count_lines "$filename")
-        dest_lines=$(count_lines "$existing_dest")
+        if [ "$USE_MTIME" -eq 1 ]; then
+            if [ "$filename" -ot "$existing_dest" ] || [ "$filename" -ef "$existing_dest" ]; then
+                echo "Skipping: $filename (destination is up to date, source not newer)"
+                continue
+            fi
+            echo "Reparsing: $filename (source is newer than destination)"
+        else
+            src_lines=$(count_lines "$filename")
+            dest_lines=$(count_lines "$existing_dest")
 
-        if [ "$src_lines" -le "$dest_lines" ]; then
-            echo "Skipping: $filename (destination up to date, $dest_lines >= $src_lines lines)"
-            continue
+            if [ "$src_lines" -le "$dest_lines" ]; then
+                echo "Skipping: $filename (destination up to date, $dest_lines >= $src_lines lines)"
+                continue
+            fi
+            echo "Reparsing: $filename ($src_lines lines > $dest_lines lines in destination)"
         fi
-        echo "Reparsing: $filename ($src_lines lines > $dest_lines lines in destination)"
     elif [ -n "$existing_dest" ] && [ "$FORCE" -eq 1 ]; then
         echo "Force parsing: $filename"
     else
