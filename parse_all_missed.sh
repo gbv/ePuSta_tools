@@ -1,33 +1,30 @@
 #!/bin/bash
 
-source config
-
+SCRIPTDIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPTDIR/config"
 source ~/.profile
 
-for filename in $ACCESSLOGDIR/*; do
-    if [ -f $filename ]; then
-        #basename="$(basename $filename .log)";
-        #destfile=$basename.epusta.log
-        if [ ${filename: -3} == ".gz" ]; then
-            basename="$(basename $filename .log.gz)";
-            filename2=${filename: 0 : -3};
-        elif [ ${filename: -4} == ".log" ]; then
-            basename="$(basename $filename .log)";
-            filename2=$filename;
+for filename in "$ACCESSLOGDIR"/*; do
+    if [ -f "$filename" ]; then
+        if [[ "$filename" == *.gz ]]; then
+            basename="$(basename "$filename" .log.gz)"
+        elif [[ "$filename" == *.log ]]; then
+            basename="$(basename "$filename" .log)"
         else
-            echo "Error: Wrong Filenamepatern - skip processing."
+            echo "Error: Wrong filename pattern - skip processing."
+            continue
         fi
-        destfile=$basename.epusta.log;
-        destfile2=$basename.epusta.log.gz;
+        destfile="$basename.epusta.log"
+        destfile2="$basename.epusta.log.gz"
         if [ ! -f "$EPUSTALOGDIR/$destfile" ] && [ ! -f "$EPUSTALOGDIR/$destfile2" ]; then
             echo "Processing: $filename -> $destfile"
-            if [ -f "$EPUSTALOGDIR/$destfile2" ]; then rm $EPUSTALOGDIR/$destfile2; fi 
-            if [ ${filename: -3} == ".gz" ]; then gzip -d $filename; fi
-            cat $filename2 | log2epusta.php | addIdentifierMIR.php | filter.php > $EPUSTALOGDIR/$destfile
-            if [ ${filename: -3} == ".gz" ]; then gzip $filename2; fi
+            if [[ "$filename" == *.gz ]]; then
+                zcat "$filename" | log2epusta.php | addIdentifierMIR.php | filter.php > "$EPUSTALOGDIR/$destfile"
+            else
+                cat "$filename" | log2epusta.php | addIdentifierMIR.php | filter.php > "$EPUSTALOGDIR/$destfile"
+            fi
         else
-            echo "$filename allready parsed."
+            echo "$filename already parsed."
         fi
     fi
 done
-

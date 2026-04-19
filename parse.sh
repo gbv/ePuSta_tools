@@ -112,13 +112,11 @@ for filename in "${FILES[@]}"; do
         continue
     fi
 
-    # Determine basename and uncompressed filename
+    # Determine basename
     if [[ "$filename" == *.gz ]]; then
         basename="$(basename "$filename" .log.gz)"
-        filename_uncompressed="${filename%.gz}"
     elif [[ "$filename" == *.log ]]; then
         basename="$(basename "$filename" .log)"
-        filename_uncompressed="$filename"
     else
         echo "Warning: $filename has unexpected extension, skipping."
         continue
@@ -165,19 +163,11 @@ for filename in "${FILES[@]}"; do
     [ -f "$destpath" ] && rm "$destpath"
     [ -f "$destpath_gz" ] && rm "$destpath_gz"
 
-    # Decompress source if needed
-    was_compressed=0
+    # Run pipeline (pipe gz directly without decompressing)
     if [[ "$filename" == *.gz ]]; then
-        was_compressed=1
-        gzip -d "$filename"
-    fi
-
-    # Run pipeline
-    eval "cat '$filename_uncompressed' | $PIPE" > "$destpath"
-
-    # Recompress source if it was compressed
-    if [ "$was_compressed" -eq 1 ]; then
-        gzip "$filename_uncompressed"
+        eval "zcat '$filename' | $PIPE" > "$destpath"
+    else
+        eval "cat '$filename' | $PIPE" > "$destpath"
     fi
 
     echo "  -> $destpath"
